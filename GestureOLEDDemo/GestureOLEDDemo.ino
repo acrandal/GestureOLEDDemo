@@ -68,84 +68,83 @@ enum ARROW_DIRECTION
 };
 
 
-// *******************************************************************************************************
+// ** *****************************************************************************************************
 void setup() {
   Serial.begin(115200);
 
   if( !sensor.begin() )           // return value of 0 == success
-  {
-    Serial.print("PAJ7620 I2C error - halting");
-    while(true) { }
-  }
-
+    {    Serial.print("PAJ7620 I2C error - halting");  while(true) { }  }
   Serial.println("PAJ7620 init: OK");
 
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
-    Serial.println(F("SSD1306 allocation failed"));
-    for (;;); // Don't proceed, loop forever
-  }
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+    { Serial.println(F("SSD1306 allocation failed"));  for (;;); }
+  Serial.println("OLED init: OK");
 
-  display.display();
   display.clearDisplay();
   display.display();
 
-  //display.drawPixel(10, 10, SSD1306_WHITE);
-
   attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), interruptRoutine, FALLING);
 
-  
-/*
-  testdrawline();      // Draw many lines
-
-  testdrawrect();      // Draw rectangles (outlines)
-
-  testfillrect();      // Draw rectangles (filled)
-
-  testdrawcircle();    // Draw circles (outlines)
-
-  testfillcircle();    // Draw circles (filled)
-
-  testdrawroundrect(); // Draw rounded rectangles (outlines)
-
-  testfillroundrect(); // Draw rounded rectangles (filled)
-
-  testdrawtriangle();  // Draw triangles (outlines)
-
-  testfilltriangle();  // Draw triangles (filled)
-
-  testdrawchar();      // Draw characters of the default font
-
-  testdrawstyles();    // Draw 'stylized' characters
-
-  testscrolltext();    // Draw scrolling text
-
-  testdrawbitmap();    // Draw a small bitmap image
-
-  // Invert and restore display, pausing in-between
-  display.invertDisplay(true);
-  delay(1000);
-  display.invertDisplay(false);
-  delay(1000);
-
-  testanimate(logo_bmp, LOGO_WIDTH, LOGO_HEIGHT); // Animate bitmaps
-  */
-
-  //display.fillRect(-40, 4, display.width() / 2, display.height() / 2, SSD1306_INVERSE);
-  //display.display();
-  //displayArrow(30, 40);
 
   // Start of animation code
   int x = 100;
-  int arrowDelay = 10000;
+  int arrowDelay = 1;
   for( int y = display.height() - 30; y > -46; y -= 4 ) {
     display.clearDisplay();
     displayArrow(x, y, LEFT_ARROW);
     display.display();
     delay(arrowDelay);
   }
+
+
+  
+  display.drawCircle(display.width() / 2, display.height() / 2, 30, SSD1306_WHITE);
+  display.display();
+  delay(10000);
+
+  Serial.println("READY.");
 }
 
-// ** Rendering a straight arrow code **************************************
+
+// ** *****************************************************************************************************
+void loop() {
+  if (isr == true)                  // See interruptRoutine for where this is set to true
+  {
+    isr = false;                    // Reset ISR flag for next interrupt
+    handleGestureInterrupt();
+  }
+}
+
+
+// ** ********************************************************************
+void handleGestureInterrupt()
+{
+  Gesture new_gesture = sensor.readGesture(); // Read back current gesture (if any) of type Gesture
+
+  switch (new_gesture)
+  {
+    case GES_FORWARD:           Serial.print(" GES_FORWARD");       break;
+    case GES_BACKWARD:          Serial.print(" GES_BACKWARD");      break;
+    case GES_LEFT:              Serial.print(" GES_LEFT");          break;
+    case GES_RIGHT:             Serial.print(" GES_RIGHT");         break;
+    case GES_UP:                Serial.print(" GES_UP");            break;
+    case GES_DOWN:              Serial.print(" GES_DOWN");          break;
+    case GES_CLOCKWISE:         Serial.print(" GES_CLOCKWISE");     break;
+    case GES_ANTICLOCKWISE:     Serial.print(" GES_ANTICLOCKWISE"); break;
+    case GES_WAVE:              Serial.print(" GES_WAVE");          break;
+    case GES_NONE:              Serial.print(" GES_NONE");          break;
+  }
+  Serial.println("");
+}
+
+
+// ** Called then interrupt pin falls  *****************************************
+void interruptRoutine() {  
+  //Serial.print("Int");
+  isr = true;
+}
+
+// ** Rendering a straight arrow code ************************************************
 void displayArrow(int x, int y, ARROW_DIRECTION dir) {
   int arrowShaftWidth = 11;
   int arrowShaftLength = 30;
@@ -182,44 +181,9 @@ void displayArrow(int x, int y, ARROW_DIRECTION dir) {
   }
 }
 
-// *******************************************************************************************************
-void loop() {
-  Gesture gesture;                  // Gesture is an enum type from RevEng_PAJ7620.h
-  
-  if (isr == true)                  // See interruptRoutine for where this is set to true
-  {
-    isr = false;                    // Reset ISR flag for next interrupt
-    gesture = sensor.readGesture(); // Read back current gesture (if any) of type Gesture
-
-    switch (gesture)
-    {
-      case GES_FORWARD:           Serial.print(" GES_FORWARD");       break;
-      case GES_BACKWARD:          Serial.print(" GES_BACKWARD");      break;
-      case GES_LEFT:              Serial.print(" GES_LEFT");          break;
-      case GES_RIGHT:             Serial.print(" GES_RIGHT");         break;
-      case GES_UP:                Serial.print(" GES_UP");            break;
-      case GES_DOWN:              Serial.print(" GES_DOWN");          break;
-      case GES_CLOCKWISE:         Serial.print(" GES_CLOCKWISE");     break;
-      case GES_ANTICLOCKWISE:     Serial.print(" GES_ANTICLOCKWISE"); break;
-      case GES_WAVE:              Serial.print(" GES_WAVE");          break;
-      case GES_NONE:              Serial.print(" GES_NONE");          break;
-    }
-
-    Serial.print(", Gesture Code: ");
-    Serial.println(gesture);
-  }
-}
 
 
 
-
-//************************************************************************************
-// Called then interrupt pin is set high
-void interruptRoutine()
-{
-  isr = true;
-  Serial.print("Interrupt! -- ");
-}
 
 //************************************************************************************
 
@@ -334,82 +298,6 @@ void testfillcircle(void) {
   delay(2000);
 }
 
-void testdrawroundrect(void) {
-  display.clearDisplay();
-
-  for (int16_t i = 0; i < display.height() / 2 - 2; i += 2) {
-    display.drawRoundRect(i, i, display.width() - 2 * i, display.height() - 2 * i,
-                          display.height() / 4, SSD1306_WHITE);
-    display.display();
-    delay(1);
-  }
-
-  delay(2000);
-}
-
-void testfillroundrect(void) {
-  display.clearDisplay();
-
-  for (int16_t i = 0; i < display.height() / 2 - 2; i += 2) {
-    // The INVERSE color is used so round-rects alternate white/black
-    display.fillRoundRect(i, i, display.width() - 2 * i, display.height() - 2 * i,
-                          display.height() / 4, SSD1306_INVERSE);
-    display.display();
-    delay(1);
-  }
-
-  delay(2000);
-}
-
-void testdrawtriangle(void) {
-  display.clearDisplay();
-
-  for (int16_t i = 0; i < max(display.width(), display.height()) / 2; i += 5) {
-    display.drawTriangle(
-      display.width() / 2  , display.height() / 2 - i,
-      display.width() / 2 - i, display.height() / 2 + i,
-      display.width() / 2 + i, display.height() / 2 + i, SSD1306_WHITE);
-    display.display();
-    delay(1);
-  }
-
-  delay(2000);
-}
-
-void testfilltriangle(void) {
-  display.clearDisplay();
-
-  for (int16_t i = max(display.width(), display.height()) / 2; i > 0; i -= 5) {
-    // The INVERSE color is used so triangles alternate white/black
-    display.fillTriangle(
-      display.width() / 2  , display.height() / 2 - i,
-      display.width() / 2 - i, display.height() / 2 + i,
-      display.width() / 2 + i, display.height() / 2 + i, SSD1306_INVERSE);
-    display.display();
-    delay(1);
-  }
-
-  delay(2000);
-}
-
-void testdrawchar(void) {
-  display.clearDisplay();
-
-  display.setTextSize(1);      // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_WHITE); // Draw white text
-  display.setCursor(0, 0);     // Start at top-left corner
-  display.cp437(true);         // Use full 256 char 'Code Page 437' font
-
-  // Not all the characters will fit on the display. This is normal.
-  // Library will draw what it can and the rest will be clipped.
-  for (int16_t i = 0; i < 256; i++) {
-    if (i == '\n') display.write(' ');
-    else          display.write(i);
-  }
-
-  display.display();
-  delay(2000);
-}
 
 void testdrawstyles(void) {
   display.clearDisplay();
@@ -428,87 +316,4 @@ void testdrawstyles(void) {
 
   display.display();
   delay(2000);
-}
-
-void testscrolltext(void) {
-  display.clearDisplay();
-
-  display.setTextSize(2); // Draw 2X-scale text
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(10, 0);
-  display.println(F("scroll"));
-  display.display();      // Show initial text
-  delay(100);
-
-  // Scroll in various directions, pausing in-between:
-  display.startscrollright(0x00, 0x0F);
-  delay(2000);
-  display.stopscroll();
-  delay(1000);
-  display.startscrollleft(0x00, 0x0F);
-  delay(2000);
-  display.stopscroll();
-  delay(1000);
-  display.startscrolldiagright(0x00, 0x07);
-  delay(2000);
-  display.startscrolldiagleft(0x00, 0x07);
-  delay(2000);
-  display.stopscroll();
-  delay(1000);
-}
-
-void testdrawbitmap(void) {
-  display.clearDisplay();
-
-  display.drawBitmap(
-    (display.width()  - LOGO_WIDTH ) / 2,
-    (display.height() - LOGO_HEIGHT) / 2,
-    logo_bmp, LOGO_WIDTH, LOGO_HEIGHT, 1);
-  display.display();
-  delay(1000);
-}
-
-#define XPOS   0 // Indexes into the 'icons' array in function below
-#define YPOS   1
-#define DELTAY 2
-
-void testanimate(const uint8_t *bitmap, uint8_t w, uint8_t h) {
-  int8_t f, icons[NUMFLAKES][3];
-
-  // Initialize 'snowflake' positions
-  for (f = 0; f < NUMFLAKES; f++) {
-    icons[f][XPOS]   = random(1 - LOGO_WIDTH, display.width());
-    icons[f][YPOS]   = -LOGO_HEIGHT;
-    icons[f][DELTAY] = random(1, 6);
-    Serial.print(F("x: "));
-    Serial.print(icons[f][XPOS], DEC);
-    Serial.print(F(" y: "));
-    Serial.print(icons[f][YPOS], DEC);
-    Serial.print(F(" dy: "));
-    Serial.println(icons[f][DELTAY], DEC);
-  }
-
-  for (;;) { // Loop forever...
-    display.clearDisplay(); // Clear the display buffer
-
-    // Draw each snowflake:
-    for (f = 0; f < NUMFLAKES; f++) {
-      display.drawBitmap(icons[f][XPOS], icons[f][YPOS], bitmap, w, h, SSD1306_WHITE);
-    }
-
-    display.display(); // Show the display buffer on the screen
-    delay(200);        // Pause for 1/10 second
-
-    // Then update coordinates of each flake...
-    for (f = 0; f < NUMFLAKES; f++) {
-      icons[f][YPOS] += icons[f][DELTAY];
-      // If snowflake is off the bottom of the screen...
-      if (icons[f][YPOS] >= display.height()) {
-        // Reinitialize to a random position, just off the top
-        icons[f][XPOS]   = random(1 - LOGO_WIDTH, display.width());
-        icons[f][YPOS]   = -LOGO_HEIGHT;
-        icons[f][DELTAY] = random(1, 6);
-      }
-    }
-  }
 }
